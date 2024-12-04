@@ -1,0 +1,1157 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import re
+import datetime
+import os
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+# Definición de colores
+COLOR_FONDO = "#ffe6f0"
+COLOR_BOTON = "#ff66b2"
+COLOR_TEXTO_BOTON = "#ffffff"
+COLOR_CAMPO = "#fff0f5"
+
+# Base de datos temporal (diccionarios)
+usuarios = {
+    "usuario1": {"contraseña": "1234", "correo": "usuario1@example.com", "telefono": "1234567890"}
+}
+productos = {}
+clientes = {}
+facturas = []
+contador_facturas = 1
+contador_clientes = 1
+
+# Ventana principal de la aplicación
+class App:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Factgre")
+        self.root.geometry("400x350")
+        self.root.configure(bg=COLOR_FONDO)
+
+        title = tk.Label(self.root, text="Bienvenido a Factgre", font=("Arial", 18, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=20)
+
+        btn_login = tk.Button(self.root, text="Iniciar Sesión", width=20, height=2,
+                              bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.iniciar_sesion)
+        btn_login.pack(pady=10)
+
+        btn_register = tk.Button(self.root, text="Registrar Usuario", width=20, height=2,
+                                 bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.registrar_usuario)
+        btn_register.pack(pady=10)
+
+        btn_recover = tk.Button(self.root, text="Recuperar Contraseña", width=20, height=2,
+                                bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.recuperar_contrasena)
+        btn_recover.pack(pady=10)
+
+    def iniciar_sesion(self):
+        LoginWindow(self.root)
+
+    def registrar_usuario(self):
+        RegisterWindow(self.root)
+
+    def recuperar_contrasena(self):
+        # Aquí puedes implementar la función de recuperación de contraseña si lo deseas
+        pass
+
+# Ventana de Registro de Usuario
+class RegisterWindow:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Registro de Usuario")
+        self.root.geometry("300x450")
+        self.root.configure(bg=COLOR_FONDO)
+
+        title = tk.Label(self.root, text="Registro de Usuario", font=("Arial", 16, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        self.entry_usuario = self.crear_campo("Usuario")
+        self.entry_contrasena = self.crear_campo("Contraseña", show="*")
+        self.entry_confirmar_contrasena = self.crear_campo("Confirmar Contraseña", show="*")
+        self.entry_correo = self.crear_campo("Correo")
+        self.entry_telefono = self.crear_campo("Teléfono")
+
+        btn_register = tk.Button(self.root, text="Registrar", width=15, height=2,
+                                 bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.registrar)
+        btn_register.pack(pady=20)
+
+    def crear_campo(self, texto, show=None):
+        label = tk.Label(self.root, text=texto, bg=COLOR_FONDO, fg=COLOR_BOTON)
+        label.pack(pady=5)
+        entry = tk.Entry(self.root, show=show, bg=COLOR_CAMPO, fg="black")
+        entry.pack(pady=5)
+        return entry
+
+    def registrar(self):
+        usuario = self.entry_usuario.get().strip()
+        contrasena = self.entry_contrasena.get().strip()
+        confirmar_contrasena = self.entry_confirmar_contrasena.get().strip()
+        correo = self.entry_correo.get().strip()
+        telefono = self.entry_telefono.get().strip()
+
+        if not usuario or not contrasena or not confirmar_contrasena or not correo or not telefono:
+            messagebox.showerror("Error", "Por favor, complete todos los campos.")
+            return
+        if contrasena != confirmar_contrasena:
+            messagebox.showerror("Error", "Las contraseñas no coinciden.")
+            return
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", correo):
+            messagebox.showerror("Error", "Ingrese un correo válido.")
+            return
+        if not telefono.isdigit() or len(telefono) != 10:
+            messagebox.showerror("Error", "El teléfono debe ser numérico y tener 10 dígitos.")
+            return
+        if usuario in usuarios:
+            messagebox.showerror("Error", "El usuario ya existe.")
+            return
+
+        usuarios[usuario] = {"contraseña": contrasena, "correo": correo, "telefono": telefono}
+        messagebox.showinfo("Éxito", "Usuario registrado exitosamente.")
+        self.root.destroy()
+
+# Ventana de Inicio de Sesión
+class LoginWindow:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Inicio de Sesión")
+        self.root.geometry("300x300")
+        self.root.configure(bg=COLOR_FONDO)
+
+        title = tk.Label(self.root, text="Inicio de Sesión", font=("Arial", 16, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        self.entry_usuario = self.crear_campo("Usuario")
+        self.entry_contrasena = self.crear_campo("Contraseña", show="*")
+
+        btn_login = tk.Button(self.root, text="Iniciar Sesión", width=15, height=2,
+                              bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.login)
+        btn_login.pack(pady=20)
+
+    def crear_campo(self, texto, show=None):
+        label = tk.Label(self.root, text=texto, bg=COLOR_FONDO, fg=COLOR_BOTON)
+        label.pack(pady=5)
+        entry = tk.Entry(self.root, show=show, bg=COLOR_CAMPO, fg="black")
+        entry.pack(pady=5)
+        return entry
+
+    def login(self):
+        usuario = self.entry_usuario.get().strip()
+        contrasena = self.entry_contrasena.get().strip()
+
+        if usuario in usuarios and usuarios[usuario]["contraseña"] == contrasena:
+            messagebox.showinfo("Éxito", "Inicio de sesión exitoso.")
+            self.root.destroy()
+            MainScreen(self.root.master)
+        else:
+            messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
+
+# Pantalla Principal
+class MainScreen:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Pantalla Principal - Factgre")
+        self.root.geometry("400x550")
+        self.root.configure(bg=COLOR_FONDO)
+
+        title = tk.Label(self.root, text="Factgre", font=("Arial", 18, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=20)
+
+        btn_productos = tk.Button(self.root, text="Gestión de Productos", width=25, height=2,
+                                  bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.gestion_productos)
+        btn_productos.pack(pady=10)
+
+        btn_clientes = tk.Button(self.root, text="Gestión de Clientes", width=25, height=2,
+                                 bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.gestion_clientes)
+        btn_clientes.pack(pady=10)
+
+        btn_facturacion = tk.Button(self.root, text="Facturación", width=25, height=2,
+                                    bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.facturacion)
+        btn_facturacion.pack(pady=10)
+
+        btn_visualizar_facturas = tk.Button(self.root, text="Visualizar Facturas", width=25, height=2,
+                                            bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.visualizar_facturas)
+        btn_visualizar_facturas.pack(pady=10)
+
+    def gestion_productos(self):
+        ProductosCRUD(self.root)
+
+    def gestion_clientes(self):
+        ClientesCRUD(self.root)
+
+    def facturacion(self):
+        FacturacionWindow(self.root)
+
+    def visualizar_facturas(self):
+        FacturasListWindow(self.root)
+
+# CRUD de Productos
+class ProductosCRUD:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Gestión de Productos")
+        self.root.geometry("700x500")
+        self.root.configure(bg=COLOR_FONDO)
+
+        # Título
+        title = tk.Label(
+            self.root,
+            text="Gestión de Productos",
+            font=("Arial", 18, "bold"),
+            bg=COLOR_FONDO,
+            fg=COLOR_BOTON,
+        )
+        title.pack(pady=10)
+
+        # Formulario para agregar/modificar productos
+        form_frame = tk.Frame(self.root, bg=COLOR_FONDO)
+        form_frame.pack(pady=10)
+
+        tk.Label(form_frame, text="Código:", bg=COLOR_FONDO, fg=COLOR_BOTON).grid(
+            row=0, column=0, padx=10, pady=5, sticky="e"
+        )
+        self.entry_codigo = tk.Entry(form_frame, bg=COLOR_CAMPO, fg="black")
+        self.entry_codigo.grid(row=0, column=1, padx=10, pady=5)
+
+        tk.Label(form_frame, text="Nombre:", bg=COLOR_FONDO, fg=COLOR_BOTON).grid(
+            row=1, column=0, padx=10, pady=5, sticky="e"
+        )
+        self.entry_nombre = tk.Entry(form_frame, bg=COLOR_CAMPO, fg="black")
+        self.entry_nombre.grid(row=1, column=1, padx=10, pady=5)
+
+        tk.Label(
+            form_frame, text="Descripción:", bg=COLOR_FONDO, fg=COLOR_BOTON
+        ).grid(row=2, column=0, padx=10, pady=5, sticky="e")
+        self.entry_descripcion = tk.Entry(form_frame, bg=COLOR_CAMPO, fg="black")
+        self.entry_descripcion.grid(row=2, column=1, padx=10, pady=5)
+
+        tk.Label(form_frame, text="Precio:", bg=COLOR_FONDO, fg=COLOR_BOTON).grid(
+            row=3, column=0, padx=10, pady=5, sticky="e"
+        )
+        self.entry_precio = tk.Entry(form_frame, bg=COLOR_CAMPO, fg="black")
+        self.entry_precio.grid(row=3, column=1, padx=10, pady=5)
+
+        tk.Label(
+            form_frame, text="Cantidad:", bg=COLOR_FONDO, fg=COLOR_BOTON
+        ).grid(row=4, column=0, padx=10, pady=5, sticky="e")
+        self.entry_cantidad = tk.Entry(form_frame, bg=COLOR_CAMPO, fg="black")
+        self.entry_cantidad.grid(row=4, column=1, padx=10, pady=5)
+
+        # Botones de acciones
+        btn_frame = tk.Frame(self.root, bg=COLOR_FONDO)
+        btn_frame.pack(pady=10)
+
+        btn_agregar = tk.Button(
+            btn_frame,
+            text="Agregar",
+            bg=COLOR_BOTON,
+            fg=COLOR_TEXTO_BOTON,
+            command=self.agregar_producto,
+        )
+        btn_agregar.grid(row=0, column=0, padx=5)
+
+        btn_modificar = tk.Button(
+            btn_frame,
+            text="Modificar",
+            bg=COLOR_BOTON,
+            fg=COLOR_TEXTO_BOTON,
+            command=self.modificar_producto,
+        )
+        btn_modificar.grid(row=0, column=1, padx=5)
+
+        btn_eliminar = tk.Button(
+            btn_frame,
+            text="Eliminar",
+            bg=COLOR_BOTON,
+            fg=COLOR_TEXTO_BOTON,
+            command=self.eliminar_producto,
+        )
+        btn_eliminar.grid(row=0, column=2, padx=5)
+
+        # Tabla para mostrar productos
+        self.tree = ttk.Treeview(
+            self.root,
+            columns=("Código", "Nombre", "Descripción", "Precio", "Cantidad"),
+            show="headings",
+        )
+        self.tree.heading("Código", text="Código")
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Descripción", text="Descripción")
+        self.tree.heading("Precio", text="Precio")
+        self.tree.heading("Cantidad", text="Cantidad")
+        self.tree.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        # Botón para cargar productos
+        btn_cargar = tk.Button(
+            self.root,
+            text="Cargar Productos",
+            bg=COLOR_BOTON,
+            fg=COLOR_TEXTO_BOTON,
+            command=self.cargar_productos,
+        )
+        btn_cargar.pack(pady=10)
+
+        # Cargar productos existentes al iniciar
+        self.cargar_productos()
+
+    def cargar_productos(self):
+        # Limpiar tabla
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # Insertar productos desde el diccionario 'productos'
+        for codigo, datos in productos.items():
+            self.tree.insert(
+                "", "end", values=(codigo, datos.get("nombre", ""), datos.get("descripcion", ""),
+                                   f"${datos['precio']:.2f}", datos["cantidad"])
+            )
+
+    def agregar_producto(self):
+        codigo = self.entry_codigo.get().strip()
+        nombre = self.entry_nombre.get().strip()
+        descripcion = self.entry_descripcion.get().strip()
+        precio = self.entry_precio.get().strip()
+        cantidad = self.entry_cantidad.get().strip()
+
+        if not codigo or not nombre or not descripcion or not precio or not cantidad:
+            messagebox.showerror("Error", "Por favor complete todos los campos.")
+            return
+
+        if codigo in productos:
+            messagebox.showerror("Error", "El código de producto ya existe.")
+            return
+
+        try:
+            precio = float(precio)
+            cantidad = int(cantidad)
+        except ValueError:
+            messagebox.showerror("Error", "Precio debe ser un número y cantidad un entero.")
+            return
+
+        # Agregar al diccionario 'productos'
+        productos[codigo] = {"nombre": nombre, "descripcion": descripcion, "precio": precio, "cantidad": cantidad}
+
+        # Actualizar la tabla
+        self.tree.insert("", "end", values=(codigo, nombre, descripcion, f"${precio:.2f}", cantidad))
+        messagebox.showinfo("Éxito", "Producto agregado correctamente.")
+        self.limpiar_campos()
+
+    def modificar_producto(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Seleccione un producto para modificar.")
+            return
+
+        selected_item = selected_items[0]
+        valores = self.tree.item(selected_item, "values")
+        codigo_original = valores[0]
+
+        # Abrir el formulario de producto con datos prellenados
+        ProductoForm(self.root, self.tree, codigo_original, self.actualizar_productos)
+
+    def actualizar_productos(self):
+        self.cargar_productos()
+
+    def eliminar_producto(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Seleccione un producto para eliminar.")
+            return
+
+        selected_item = selected_items[0]
+        valores = self.tree.item(selected_item, "values")
+        codigo = valores[0]
+
+        confirm = messagebox.askyesno(
+            "Confirmar", f"¿Está seguro de eliminar el producto con código '{codigo}'?"
+        )
+        if confirm:
+            # Eliminar del diccionario 'productos'
+            if codigo in productos:
+                del productos[codigo]
+            # Eliminar de la tabla
+            self.tree.delete(selected_item)
+            messagebox.showinfo("Éxito", "Producto eliminado correctamente.")
+
+    def limpiar_campos(self):
+        self.entry_codigo.delete(0, tk.END)
+        self.entry_nombre.delete(0, tk.END)
+        self.entry_descripcion.delete(0, tk.END)
+        self.entry_precio.delete(0, tk.END)
+        self.entry_cantidad.delete(0, tk.END)
+
+# Formulario para Modificar Producto
+class ProductoForm:
+    def __init__(self, root, tree, codigo_original, callback):
+        self.root = tk.Toplevel(root)
+        self.root.title("Modificar Producto")
+        self.root.geometry("300x400")
+        self.root.configure(bg=COLOR_FONDO)
+        self.tree = tree
+        self.codigo_original = codigo_original
+        self.callback = callback
+
+        # Título
+        title_text = "Modificar Producto"
+        title = tk.Label(self.root, text=title_text, font=("Arial", 16, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        # Campos de entrada
+        self.entry_codigo = self.crear_campo("Código")
+        self.entry_nombre = self.crear_campo("Nombre")
+        self.entry_descripcion = self.crear_campo("Descripción")
+        self.entry_precio = self.crear_campo("Precio")
+        self.entry_cantidad = self.crear_campo("Cantidad")
+
+        # Cargar datos actuales
+        self.cargar_datos()
+
+        # Botón de guardar cambios
+        btn_save = tk.Button(self.root, text="Guardar Cambios", width=15, height=2,
+                             bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.guardar_cambios)
+        btn_save.pack(pady=20)
+
+    def crear_campo(self, texto):
+        label = tk.Label(self.root, text=texto, bg=COLOR_FONDO, fg=COLOR_BOTON)
+        label.pack(pady=5)
+        entry = tk.Entry(self.root, bg=COLOR_CAMPO, fg="black")
+        entry.pack(pady=5)
+        return entry
+
+    def cargar_datos(self):
+        datos = productos.get(self.codigo_original, {})
+        self.entry_codigo.insert(0, self.codigo_original)
+        self.entry_nombre.insert(0, datos.get("nombre", ""))
+        self.entry_descripcion.insert(0, datos.get("descripcion", ""))
+        self.entry_precio.insert(0, f"{datos.get('precio', 0):.2f}")
+        self.entry_cantidad.insert(0, datos.get("cantidad", 0))
+
+    def guardar_cambios(self):
+        # Obtener los nuevos datos
+        codigo = self.entry_codigo.get().strip()
+        nombre = self.entry_nombre.get().strip()
+        descripcion = self.entry_descripcion.get().strip()
+        precio = self.entry_precio.get().strip()
+        cantidad = self.entry_cantidad.get().strip()
+
+        if not codigo or not nombre or not descripcion or not precio or not cantidad:
+            messagebox.showerror("Error", "Por favor, complete todos los campos.")
+            return
+
+        try:
+            precio = float(precio)
+            cantidad = int(cantidad)
+        except ValueError:
+            messagebox.showerror("Error", "Precio debe ser un número y cantidad un entero.")
+            return
+
+        # Verificar si el código ha cambiado y si el nuevo código ya existe
+        if codigo != self.codigo_original and codigo in productos:
+            messagebox.showerror("Error", "El nuevo código del producto ya existe.")
+            return
+
+        # Actualizar el diccionario 'productos'
+        if codigo != self.codigo_original:
+            # Eliminar el antiguo y agregar el nuevo
+            del productos[self.codigo_original]
+        productos[codigo] = {"nombre": nombre, "descripcion": descripcion, "precio": precio, "cantidad": cantidad}
+
+        # Actualizar la tabla
+        self.callback()  # Re-cargar la tabla en ProductosCRUD
+
+        messagebox.showinfo("Éxito", "Producto modificado correctamente.")
+        self.root.destroy()
+
+# CRUD de Clientes
+class ClientesCRUD:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Gestión de Clientes")
+        self.root.geometry("500x400")
+        self.root.configure(bg=COLOR_FONDO)
+
+        # Título
+        title = tk.Label(self.root, text="Gestión de Clientes", font=("Arial", 16, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        # Tabla de clientes
+        self.tree = ttk.Treeview(self.root, columns=("Nombre", "Correo", "Teléfono", "RFC"), show='headings')
+        self.tree.heading("Nombre", text="Nombre")
+        self.tree.heading("Correo", text="Correo")
+        self.tree.heading("Teléfono", text="Teléfono")
+        self.tree.heading("RFC", text="RFC")
+        self.tree.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        # Botones
+        btn_frame = tk.Frame(self.root, bg=COLOR_FONDO)
+        btn_frame.pack(pady=10)
+
+        btn_add = tk.Button(btn_frame, text="Agregar", width=10, bg=COLOR_BOTON,
+                            fg=COLOR_TEXTO_BOTON, command=self.agregar_cliente)
+        btn_add.grid(row=0, column=0, padx=5)
+
+        btn_edit = tk.Button(btn_frame, text="Editar", width=10, bg=COLOR_BOTON,
+                             fg=COLOR_TEXTO_BOTON, command=self.editar_cliente)
+        btn_edit.grid(row=0, column=1, padx=5)
+
+        btn_delete = tk.Button(btn_frame, text="Eliminar", width=10, bg=COLOR_BOTON,
+                               fg=COLOR_TEXTO_BOTON, command=self.eliminar_cliente)
+        btn_delete.grid(row=0, column=2, padx=5)
+
+        # Botón para cargar clientes
+        btn_cargar = tk.Button(self.root, text="Cargar Clientes", bg=COLOR_BOTON,
+                               fg=COLOR_TEXTO_BOTON, command=self.cargar_clientes)
+        btn_cargar.pack(pady=10)
+
+        # Cargar clientes existentes
+        self.cargar_clientes()
+
+    def cargar_clientes(self):
+        # Limpiar la tabla
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # Insertar clientes
+        for id_cliente, datos in clientes.items():
+            self.tree.insert("", "end", values=(datos["nombre"], datos["correo"],
+                                                datos["telefono"], datos["rfc"]))
+
+    def agregar_cliente(self):
+        ClienteForm(self.root, self.cargar_clientes)
+
+    def editar_cliente(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Seleccione un cliente para editar.")
+            return
+        selected_item = selected_items[0]
+        valores = self.tree.item(selected_item, 'values')
+        nombre_cliente = valores[0]
+        ClienteForm(self.root, self.cargar_clientes, nombre_cliente)
+
+    def eliminar_cliente(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Seleccione un cliente para eliminar.")
+            return
+        selected_item = selected_items[0]
+        valores = self.tree.item(selected_item, "values")
+        nombre_cliente = valores[0]
+        # Encontrar el ID del cliente
+        id_cliente = None
+        for key, val in clientes.items():
+            if val["nombre"] == nombre_cliente:
+                id_cliente = key
+                break
+        if id_cliente:
+            confirm = messagebox.askyesno("Confirmar", f"¿Está seguro de eliminar al cliente '{nombre_cliente}'?")
+            if confirm:
+                del clientes[id_cliente]
+                self.cargar_clientes()
+                messagebox.showinfo("Éxito", f"Cliente '{nombre_cliente}' eliminado correctamente.")
+
+# Formulario para agregar o editar clientes
+class ClienteForm:
+    def __init__(self, root, callback, nombre_cliente=None):
+        self.root = tk.Toplevel(root)
+        self.callback = callback
+        self.root.title("Formulario de Cliente")
+        self.root.geometry("300x400")
+        self.root.configure(bg=COLOR_FONDO)
+        self.nombre_cliente = nombre_cliente
+
+        # Título
+        title_text = "Editar Cliente" if nombre_cliente else "Agregar Cliente"
+        title = tk.Label(self.root, text=title_text, font=("Arial", 16, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        # Campos de entrada
+        self.entry_nombre = self.crear_campo("Nombre")
+        self.entry_correo = self.crear_campo("Correo")
+        self.entry_telefono = self.crear_campo("Teléfono")
+        self.entry_direccion = self.crear_campo("Dirección")  # Nuevo campo
+        self.entry_comuna = self.crear_campo("Comuna")        # Nuevo campo
+        self.entry_ciudad = self.crear_campo("Ciudad")        # Nuevo campo
+
+        # Si es edición, cargar datos
+        if nombre_cliente:
+            for key, val in clientes.items():
+                if val["nombre"] == nombre_cliente:
+                    self.id_cliente = key
+                    self.entry_nombre.insert(0, val["nombre"])
+                    self.entry_correo.insert(0, val["correo"])
+                    self.entry_telefono.insert(0, val["telefono"])
+                    self.entry_direccion.insert(0, val.get("direccion", ""))
+                    self.entry_comuna.insert(0, val.get("comuna", ""))
+                    self.entry_ciudad.insert(0, val.get("ciudad", ""))
+                    break
+
+        # Botón de guardar
+        btn_save = tk.Button(self.root, text="Guardar", width=15, height=2,
+                             bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.guardar_cliente)
+        btn_save.pack(pady=20)
+
+    def crear_campo(self, texto):
+        label = tk.Label(self.root, text=texto, bg=COLOR_FONDO, fg=COLOR_BOTON)
+        label.pack(pady=5)
+        entry = tk.Entry(self.root, bg=COLOR_CAMPO, fg="black")
+        entry.pack(pady=5)
+        return entry
+
+    def generar_rfc(self, nombre):
+        # Función simple para generar un RFC simulado basado en el nombre y una fecha fija
+        nombre_parts = nombre.strip().upper().split()
+        if len(nombre_parts) < 2:
+            nombre_parts.append('X')
+        rfc = ''.join([p[0] for p in nombre_parts[:2]])
+        fecha = datetime.datetime.now().strftime('%Y%m%d')
+        homoclave = 'XXX'
+        return rfc + fecha + homoclave
+
+    def guardar_cliente(self):
+        global contador_clientes
+        nombre = self.entry_nombre.get().strip()
+        correo = self.entry_correo.get().strip()
+        telefono = self.entry_telefono.get().strip()
+        direccion = self.entry_direccion.get().strip()
+        comuna = self.entry_comuna.get().strip()
+        ciudad = self.entry_ciudad.get().strip()
+
+        # Validaciones
+        if not nombre or not correo or not telefono:
+            messagebox.showerror("Error", "Por favor, complete todos los campos.")
+            return
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", correo):
+            messagebox.showerror("Error", "Ingrese un correo válido.")
+            return
+        if not telefono.isdigit():
+            messagebox.showerror("Error", "El teléfono debe ser numérico.")
+            return
+
+        rfc = self.generar_rfc(nombre)
+
+        if not self.nombre_cliente:
+            # Generar un ID único para el cliente
+            id_cliente = contador_clientes
+            clientes[id_cliente] = {
+                "nombre": nombre,
+                "correo": correo,
+                "telefono": telefono,
+                "direccion": direccion,
+                "comuna": comuna,
+                "ciudad": ciudad,
+                "rfc": rfc
+            }
+            contador_clientes += 1
+        else:
+            # Actualizar cliente existente
+            clientes[self.id_cliente] = {
+                "nombre": nombre,
+                "correo": correo,
+                "telefono": telefono,
+                "direccion": direccion,
+                "comuna": comuna,
+                "ciudad": ciudad,
+                "rfc": rfc
+            }
+        messagebox.showinfo("Éxito", f"Cliente guardado exitosamente.\nRFC generado: {rfc}")
+        self.callback()
+        self.root.destroy()
+
+# Ventana de Facturación
+class FacturacionWindow:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Facturación")
+        self.root.geometry("900x700")
+        self.root.configure(bg="#FFC0CB")  # Fondo en tono rosado
+
+        # Estilo general
+        style = ttk.Style()
+        style.configure("TLabel", background="#FFC0CB", font=("Arial", 10))
+        style.configure("TButton", font=("Arial", 10, "bold"))
+
+        # Campos superiores
+        frame_top = tk.Frame(self.root, bg="#FFC0CB")
+        frame_top.pack(padx=10, pady=10, fill=tk.X)
+
+        # Modificación: Agregar combobox para seleccionar cliente
+        tk.Label(frame_top, text="Seleccionar Cliente", bg="#FFC0CB", font=("Arial", 10)).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.cliente_combo = ttk.Combobox(frame_top, font=("Arial", 10), width=30, state="readonly")
+        self.actualizar_lista_clientes()
+        self.cliente_combo.grid(row=0, column=1, padx=5, pady=5)
+        self.cliente_combo.bind("<<ComboboxSelected>>", self.cargar_datos_cliente)
+
+        fields = [
+            ("RUT", ""), ("Razón Social", ""),
+            ("Giro", ""), ("Teléfono", ""),
+            ("Dirección", ""), ("Comuna", ""),
+            ("Ciudad", ""), ("Fecha", datetime.datetime.now().strftime("%d/%m/%Y"))
+        ]
+
+        self.entries = {}
+        for i, (label, default) in enumerate(fields):
+            tk.Label(frame_top, text=label, bg="#FFC0CB", font=("Arial", 10)).grid(row=(i+1) // 2, column=((i+1) % 2) * 2, sticky="w", padx=5, pady=5)
+            entry = ttk.Entry(frame_top, font=("Arial", 10), width=30)
+            entry.insert(0, default)
+            entry.grid(row=(i+1) // 2, column=((i+1) % 2) * 2 + 1, padx=5, pady=5)
+            self.entries[label] = entry
+
+        # Tabla de productos
+        frame_table = tk.Frame(self.root, bg="#FFC0CB")
+        frame_table.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+        columns = ["Código", "Cantidad", "Descripción", "Precio Unit.", "Total"]
+        self.table = ttk.Treeview(frame_table, columns=columns, show="headings", height=10)
+        for col in columns:
+            self.table.heading(col, text=col)
+            self.table.column(col, width=100 if col != "Descripción" else 200)
+        self.table.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+        # Botones debajo de la tabla
+        frame_buttons = tk.Frame(self.root, bg="#FFC0CB")
+        frame_buttons.pack(padx=10, pady=10, fill=tk.X)
+
+        btn_add = ttk.Button(frame_buttons, text="Agregar Producto", command=self.agregar_producto)
+        btn_add.pack(side=tk.LEFT, padx=5, pady=5)
+
+        btn_clear = ttk.Button(frame_buttons, text="Limpiar Productos", command=self.limpiar_tabla)
+        btn_clear.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Totales
+        frame_totals = tk.Frame(self.root, bg="#FFC0CB")
+        frame_totals.pack(padx=10, pady=10, fill=tk.X)
+
+        totals = [
+            ("Observación", ""), ("Total Neto", ""),
+            ("IVA 19%", ""), ("TOTAL", "")
+        ]
+
+        self.totals_entries = {}
+        for i, (label, default) in enumerate(totals):
+            tk.Label(frame_totals, text=label, bg="#FFC0CB", font=("Arial", 10)).grid(row=i, column=0, sticky="w", padx=5, pady=5)
+            entry = ttk.Entry(frame_totals, font=("Arial", 10), width=20)
+            entry.insert(0, default)
+            entry.grid(row=i, column=1, padx=5, pady=5)
+            self.totals_entries[label] = entry
+
+        # Botón para generar PDF
+        btn_pdf = ttk.Button(self.root, text="Generar PDF", command=self.generar_pdf)
+        btn_pdf.pack(pady=10)
+
+        self.actualizar_totales()
+
+    def actualizar_lista_clientes(self):
+        # Actualizar la lista de clientes en el combobox
+        self.cliente_combo['values'] = [cliente["nombre"] for cliente in clientes.values()]
+
+    def cargar_datos_cliente(self, event):
+        # Obtener el nombre del cliente seleccionado
+        nombre_cliente = self.cliente_combo.get()
+        # Buscar el cliente en el diccionario
+        cliente_seleccionado = None
+        for cliente in clientes.values():
+            if cliente["nombre"] == nombre_cliente:
+                cliente_seleccionado = cliente
+                break
+        if cliente_seleccionado:
+            # Llenar los campos con la información del cliente
+            self.entries["RUT"].delete(0, tk.END)
+            self.entries["RUT"].insert(0, cliente_seleccionado.get("rfc", ""))
+            self.entries["Razón Social"].delete(0, tk.END)
+            self.entries["Razón Social"].insert(0, cliente_seleccionado.get("nombre", ""))
+            self.entries["Teléfono"].delete(0, tk.END)
+            self.entries["Teléfono"].insert(0, cliente_seleccionado.get("telefono", ""))
+            self.entries["Dirección"].delete(0, tk.END)
+            self.entries["Dirección"].insert(0, cliente_seleccionado.get("direccion", ""))
+            self.entries["Comuna"].delete(0, tk.END)
+            self.entries["Comuna"].insert(0, cliente_seleccionado.get("comuna", ""))
+            self.entries["Ciudad"].delete(0, tk.END)
+            self.entries["Ciudad"].insert(0, cliente_seleccionado.get("ciudad", ""))
+
+    def agregar_producto(self):
+        # Ventana emergente para agregar producto
+        def confirmar_agregar():
+            seleccion = producto_combo.get()
+            if not seleccion or not entry_cantidad.get().strip():
+                messagebox.showerror("Error", "Debe seleccionar un producto y especificar la cantidad.")
+                return
+            codigo = seleccion.split(" - ")[0].strip()
+            cantidad = entry_cantidad.get().strip()
+            if not cantidad.isdigit():
+                messagebox.showerror("Error", "La cantidad debe ser un número entero.")
+                return
+
+            cantidad = int(cantidad)
+            producto = productos.get(codigo)
+            if not producto:
+                messagebox.showerror("Error", "Producto no encontrado.")
+                return
+
+            descripcion = producto["descripcion"]
+            precio_unit = producto["precio"]
+            total = cantidad * precio_unit
+
+            # Agregar a la tabla
+            self.table.insert("", "end", values=(codigo, cantidad, descripcion, f"${precio_unit:.2f}", f"${total:.2f}"))
+            self.actualizar_totales()
+            popup.destroy()
+
+        popup = tk.Toplevel(self.root)
+        popup.title("Agregar Producto")
+        popup.geometry("400x300")
+        popup.configure(bg="#FFC0CB")
+
+        # Combobox para seleccionar producto
+        tk.Label(popup, text="Seleccionar Producto", bg="#FFC0CB", font=("Arial", 10)).pack(pady=5)
+        producto_combo = ttk.Combobox(popup, state="readonly")
+        producto_combo.pack(pady=5)
+
+        # Obtener la lista de productos
+        producto_combo['values'] = [f"{codigo} - {productos[codigo]['nombre']}" for codigo in productos]
+
+        # Función para actualizar descripción y precio al seleccionar un producto
+        def cargar_datos_producto(event):
+            seleccion = producto_combo.get()
+            if seleccion:
+                codigo = seleccion.split(" - ")[0].strip()
+                producto = productos.get(codigo)
+                if producto:
+                    entry_descripcion.delete(0, tk.END)
+                    entry_descripcion.insert(0, producto["descripcion"])
+                    entry_precio.delete(0, tk.END)
+                    entry_precio.insert(0, f"{producto['precio']:.2f}")
+
+        producto_combo.bind("<<ComboboxSelected>>", cargar_datos_producto)
+
+        tk.Label(popup, text="Cantidad", bg="#FFC0CB", font=("Arial", 10)).pack(pady=5)
+        entry_cantidad = ttk.Entry(popup)
+        entry_cantidad.pack(pady=5)
+
+        tk.Label(popup, text="Descripción", bg="#FFC0CB", font=("Arial", 10)).pack(pady=5)
+        entry_descripcion = ttk.Entry(popup, state="readonly")
+        entry_descripcion.pack(pady=5)
+
+        tk.Label(popup, text="Precio Unit.", bg="#FFC0CB", font=("Arial", 10)).pack(pady=5)
+        entry_precio = ttk.Entry(popup, state="readonly")
+        entry_precio.pack(pady=5)
+
+        tk.Button(popup, text="Agregar", command=confirmar_agregar, bg="#FF69B4", fg="white").pack(pady=10)
+
+    def limpiar_tabla(self):
+        for item in self.table.get_children():
+            self.table.delete(item)
+        self.actualizar_totales()
+
+    def actualizar_totales(self):
+        total_neto = 0.0
+        for item in self.table.get_children():
+            valores = self.table.item(item, 'values')
+            total_str = valores[4].replace('$', '')
+            try:
+                total_neto += float(total_str)
+            except ValueError:
+                pass  # Ignorar valores inválidos
+        iva = total_neto * 0.19
+        total = total_neto + iva
+
+        self.totals_entries["Total Neto"].delete(0, tk.END)
+        self.totals_entries["Total Neto"].insert(0, f"${total_neto:.2f}")
+
+        self.totals_entries["IVA 19%"].delete(0, tk.END)
+        self.totals_entries["IVA 19%"].insert(0, f"${iva:.2f}")
+
+        self.totals_entries["TOTAL"].delete(0, tk.END)
+        self.totals_entries["TOTAL"].insert(0, f"${total:.2f}")
+
+    def generar_pdf(self):
+        global contador_facturas
+        # Obtener los datos de los campos superiores
+        rut = self.entries["RUT"].get().strip()
+        razon_social = self.entries["Razón Social"].get().strip()
+        giro = self.entries["Giro"].get().strip()
+        telefono = self.entries["Teléfono"].get().strip()
+        direccion = self.entries["Dirección"].get().strip()
+        comuna = self.entries["Comuna"].get().strip()
+        ciudad = self.entries["Ciudad"].get().strip()
+        fecha = self.entries["Fecha"].get().strip()
+        observacion = self.totals_entries["Observación"].get().strip()
+        total_neto = self.totals_entries["Total Neto"].get().strip()
+        iva = self.totals_entries["IVA 19%"].get().strip()
+        total = self.totals_entries["TOTAL"].get().strip()
+
+        # Validar que haya productos
+        if not self.table.get_children():
+            messagebox.showerror("Error", "No hay productos agregados a la factura.")
+            return
+
+        # Crear el PDF
+        nombre_archivo = f"Factura_{rut}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        c = canvas.Canvas(nombre_archivo, pagesize=letter)
+        width, height = letter
+
+        # Título
+        c.setFont("Helvetica-Bold", 16)
+        c.drawCentredString(width / 2, height - 50, "Factura")
+
+        # Información de la empresa o cliente
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, height - 80, f"RUT: {rut}")
+        c.drawString(50, height - 100, f"Razón Social: {razon_social}")
+        c.drawString(50, height - 120, f"Giro: {giro}")
+        c.drawString(50, height - 140, f"Teléfono: {telefono}")
+        c.drawString(50, height - 160, f"Dirección: {direccion}")
+        c.drawString(50, height - 180, f"Comuna: {comuna}")
+        c.drawString(50, height - 200, f"Ciudad: {ciudad}")
+        c.drawString(50, height - 220, f"Fecha: {fecha}")
+
+        # Encabezado de la tabla
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, height - 250, "Código")
+        c.drawString(150, height - 250, "Cantidad")
+        c.drawString(250, height - 250, "Descripción")
+        c.drawString(500, height - 250, "Precio Unit.")
+        c.drawString(600, height - 250, "Total")
+        y = height - 270
+        c.setFont("Helvetica", 12)
+
+        # Datos de la tabla
+        productos_factura = []
+        for item in self.table.get_children():
+            valores = self.table.item(item, 'values')
+            c.drawString(50, y, valores[0])
+            c.drawString(150, y, str(valores[1]))
+            c.drawString(250, y, valores[2])
+            c.drawString(500, y, valores[3])
+            c.drawString(600, y, valores[4])
+            productos_factura.append({
+                "codigo": valores[0],
+                "cantidad": valores[1],
+                "descripcion": valores[2],
+                "precio_unitario": valores[3],
+                "total": valores[4]
+            })
+            y -= 20
+            if y < 100:
+                c.showPage()
+                y = height - 50
+
+        # Totales
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(400, y - 10, "Total Neto:")
+        c.drawString(500, y - 10, total_neto)
+        c.drawString(400, y - 30, "IVA 19%:")
+        c.drawString(500, y - 30, iva)
+        c.drawString(400, y - 50, "TOTAL:")
+        c.drawString(500, y - 50, total)
+
+        # Observación
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, y - 80, "Observación:")
+        c.setFont("Helvetica", 12)
+        c.drawString(150, y - 80, observacion)
+
+        # Guardar el PDF
+        try:
+            c.save()
+            messagebox.showinfo("Éxito", f"Factura generada y guardada como {nombre_archivo}")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar el PDF:\n{e}")
+            return
+
+        # Crear una entrada de factura
+        factura = {
+            "numero": contador_facturas,
+            "fecha": fecha,
+            "cliente": razon_social,
+            "total": total,
+            "productos": productos_factura
+        }
+
+        # Agregar la factura a la lista global
+        facturas.append(factura)
+
+        # Incrementar el contador de facturas
+        contador_facturas += 1
+
+# Ventana para listar facturas generadas
+class FacturasListWindow:
+    def __init__(self, root):
+        self.root = tk.Toplevel(root)
+        self.root.title("Facturas Generadas")
+        self.root.geometry("600x400")
+        self.root.configure(bg=COLOR_FONDO)
+
+        # Título
+        title = tk.Label(self.root, text="Facturas Generadas", font=("Arial", 18, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        # Lista de facturas
+        self.tree = ttk.Treeview(self.root, columns=("Número", "Fecha", "Cliente", "Total"), show='headings')
+        self.tree.heading("Número", text="Número")
+        self.tree.heading("Fecha", text="Fecha")
+        self.tree.heading("Cliente", text="Cliente")
+        self.tree.heading("Total", text="Total")
+        self.tree.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        # Botón para visualizar factura
+        btn_view = tk.Button(self.root, text="Visualizar Factura", width=20, height=2,
+                             bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.visualizar_factura)
+        btn_view.pack(pady=10)
+
+        self.cargar_facturas()
+
+    def cargar_facturas(self):
+        # Limpiar la tabla
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        # Insertar facturas
+        for idx, factura in enumerate(facturas):
+            self.tree.insert("", "end", iid=idx, values=(factura["numero"], factura["fecha"],
+                                                         factura["cliente"], factura["total"]))
+
+    def visualizar_factura(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Seleccione una factura para visualizar.")
+            return
+        selected_item = selected_items[0]
+        factura = facturas[int(selected_item)]
+        InvoiceView(self.root, factura)
+
+# Clase para visualizar una factura
+class InvoiceView:
+    def __init__(self, root, factura):
+        self.root = tk.Toplevel(root)
+        self.root.title("Detalle de la Factura")
+        self.root.geometry("500x550")
+        self.root.configure(bg=COLOR_FONDO)
+        self.factura = factura  # Guardar la factura para usarla al generar el PDF
+
+        # Título
+        title = tk.Label(self.root, text="Detalle de la Factura", font=("Arial", 18, "bold"),
+                         bg=COLOR_FONDO, fg=COLOR_BOTON)
+        title.pack(pady=10)
+
+        # Información de la factura
+        info_frame = tk.Frame(self.root, bg=COLOR_FONDO)
+        info_frame.pack(pady=5)
+
+        tk.Label(info_frame, text=f"Número de Factura: {factura['numero']}",
+                 bg=COLOR_FONDO, fg=COLOR_BOTON).grid(row=0, column=0, padx=5, sticky='w')
+        tk.Label(info_frame, text=f"Fecha: {factura['fecha']}",
+                 bg=COLOR_FONDO, fg=COLOR_BOTON).grid(row=0, column=1, padx=5, sticky='w')
+
+        # Información del cliente
+        cliente_label = tk.Label(self.root, text=f"Cliente: {factura['cliente']}",
+                                 bg=COLOR_FONDO, fg=COLOR_BOTON, font=("Arial", 12))
+        cliente_label.pack(pady=5)
+
+        # Obtener RFC del cliente
+        rfc_cliente = self.obtener_rfc_cliente(factura['cliente'])
+        rfc_label = tk.Label(self.root, text=f"RFC: {rfc_cliente}",
+                             bg=COLOR_FONDO, fg=COLOR_BOTON, font=("Arial", 12))
+        rfc_label.pack(pady=5)
+
+        # Tabla de productos
+        tree = ttk.Treeview(self.root, columns=("Producto", "Precio", "Cantidad", "Total"), show='headings')
+        tree.heading("Producto", text="Producto")
+        tree.heading("Precio", text="Precio")
+        tree.heading("Cantidad", text="Cantidad")
+        tree.heading("Total", text="Total")
+        tree.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        # Insertar productos en la tabla
+        for producto in factura["productos"]:
+            tree.insert("", "end", values=(producto["descripcion"], producto["precio_unitario"],
+                                           producto["cantidad"], producto["total"]))
+
+        # Total de la factura
+        total_label = tk.Label(self.root, text=f"Total: {factura['total']}",
+                               font=("Arial", 14), bg=COLOR_FONDO, fg=COLOR_BOTON)
+        total_label.pack(pady=5)
+
+        # Botón para descargar PDF
+        btn_pdf = tk.Button(self.root, text="Descargar PDF", width=20, height=2,
+                            bg=COLOR_BOTON, fg=COLOR_TEXTO_BOTON, command=self.descargar_pdf)
+        btn_pdf.pack(pady=10)
+
+    def descargar_pdf(self):
+        # Generar el PDF de la factura utilizando reportlab
+        factura = self.factura
+        nombre_archivo = f"Factura_{factura['numero']}.pdf"
+
+        # Crear el lienzo del PDF
+        c = canvas.Canvas(nombre_archivo, pagesize=letter)
+        width, height = letter
+
+        # Título
+        c.setFont("Helvetica-Bold", 16)
+        c.drawCentredString(width / 2, height - 50, "Detalle de la Factura")
+
+        # Información de la factura
+        c.setFont("Helvetica", 12)
+        c.drawString(50, height - 80, f"Número de Factura: {factura['numero']}")
+        c.drawString(300, height - 80, f"Fecha: {factura['fecha']}")
+
+        # Información del cliente
+        c.drawString(50, height - 110, f"Cliente: {factura['cliente']}")
+        c.drawString(50, height - 130, f"RFC: {self.obtener_rfc_cliente(factura['cliente'])}")
+
+        # Tabla de productos
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, height - 160, "Descripción")
+        c.drawString(300, height - 160, "Precio")
+        c.drawString(400, height - 160, "Cantidad")
+        c.drawString(500, height - 160, "Total")
+
+        c.setFont("Helvetica", 12)
+        y = height - 180
+        for producto in factura["productos"]:
+            c.drawString(50, y, producto["descripcion"])
+            c.drawString(300, y, producto["precio_unitario"])
+            c.drawString(400, y, str(producto["cantidad"]))
+            c.drawString(500, y, producto["total"])
+            y -= 20
+            if y < 100:
+                c.showPage()
+                y = height - 50
+
+        # Totales
+        c.setFont("Helvetica-Bold", 12)
+        # Extraer solo el monto del total
+        c.drawString(400, y - 20, f"Total: {factura['total']}")
+
+        # Guardar el PDF
+        try:
+            c.save()
+            messagebox.showinfo("Éxito", f"Factura guardada como {nombre_archivo}")
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo guardar el PDF:\n{e}")
+
+    def obtener_rfc_cliente(self, nombre_cliente):
+        for val in clientes.values():
+            if val["nombre"] == nombre_cliente:
+                return val.get("rfc", "N/A")
+        return "N/A"
+
+# Ejecutar la aplicación
+if __name__ == "__main__":
+    # Verificar si reportlab está instalado
+    try:
+        from reportlab.pdfgen import canvas
+    except ImportError:
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror("Error", "La librería reportlab no está instalada. Por favor, instálala antes de continuar.")
+        exit()
+
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
