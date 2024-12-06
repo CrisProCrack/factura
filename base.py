@@ -6,8 +6,8 @@ import datetime
 # Configuración de la base de datos
 db_config = {
     "host": "localhost",
-    "user": "tu_usuario",  # Cambia a tu usuario
-    "password": "tu_contraseña",  # Cambia a tu contraseña
+    "user": "root",  # Cambia a tu usuario
+    "password": "",  # Cambia a tu contraseña
     "database": "facturacion"  # Cambia al nombre de tu base de datos
 }
 
